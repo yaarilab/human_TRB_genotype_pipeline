@@ -23,25 +23,6 @@ params.MakeDb.inferjunction = "false"
 params.MakeDb.partial = "false"
 params.MakeDb.name_alignment = "first"
 
-params.IgBlastn_novel.num_threads = params.nproc
-params.IgBlastn_novel.ig_seqtype = "TCR"
-params.IgBlastn_novel.outfmt = "MakeDb"
-params.IgBlastn_novel.num_alignments_V = "10"
-params.IgBlastn_novel.num_alignments_D = "3"
-params.IgBlastn_novel.num_alignments_J = "3"
-params.IgBlastn_novel.domain_system = "imgt"
-params.IgBlastn_novel.D_penalty = -1
-
-params.MakeDb_novel.failed = "true"
-params.MakeDb_novel.format = "airr"
-params.MakeDb_novel.regions = "default"
-params.MakeDb_novel.extended = "true"
-params.MakeDb_novel.asisid = "false"
-params.MakeDb_novel.asiscalls = "false"
-params.MakeDb_novel.inferjunction = "false"
-params.MakeDb_novel.partial = "false"
-params.MakeDb_novel.name_alignment = "novel"
-
 params.IgBlastn_genotype.num_threads = params.nproc
 params.IgBlastn_genotype.ig_seqtype = "TCR"
 params.IgBlastn_genotype.outfmt = "MakeDb"
