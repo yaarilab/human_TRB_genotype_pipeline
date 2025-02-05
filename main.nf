@@ -7,9 +7,9 @@ params.projectDir="${projectDir}"
 params.IgBlastn.num_threads = params.nproc
 params.IgBlastn.ig_seqtype = "TCR"
 params.IgBlastn.outfmt = "MakeDb"
-params.IgBlastn.num_alignments_V = "1"
-params.IgBlastn.num_alignments_D = "1"
-params.IgBlastn.num_alignments_J = "1"
+params.IgBlastn.num_alignments_V = "10"
+params.IgBlastn.num_alignments_D = "3"
+params.IgBlastn.num_alignments_J = "3"
 params.IgBlastn.domain_system = "imgt"
 params.IgBlastn.D_penalty = -1
 
