@@ -51,10 +51,10 @@ if (!params.v_germline_file){params.v_germline_file = ""}
 if (!params.d_germline){params.d_germline = ""} 
 if (!params.j_germline){params.j_germline = ""} 
 
-Channel.fromPath(params.airr_seq, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_0_fastaFile_g_7;g_0_fastaFile_g_10;g_0_fastaFile_g_8}
-Channel.fromPath(params.v_germline_file, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_1_germlineFastaFile_g_4;g_1_germlineFastaFile_g_10;g_1_germlineFastaFile_g_11;g_1_germlineFastaFile_g_8;g_1_germlineFastaFile_g_25}
-Channel.fromPath(params.d_germline, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_2_germlineFastaFile_g_5;g_2_germlineFastaFile_g_10;g_2_germlineFastaFile_g_25;g_2_germlineFastaFile_g_37;g_2_germlineFastaFile_g_8}
-Channel.fromPath(params.j_germline, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_3_germlineFastaFile_g_6;g_3_germlineFastaFile_g_10;g_3_germlineFastaFile_g_25;g_3_germlineFastaFile_g_8}
+Channel.fromPath(params.airr_seq, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_0_fastaFile_g_7;g_0_fastaFile_g_8}
+Channel.fromPath(params.v_germline_file, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_1_germlineFastaFile_g_4;g_1_germlineFastaFile_g_8;g_1_germlineFastaFile_g_25;g_1_germlineFastaFile_g_11}
+Channel.fromPath(params.d_germline, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_2_germlineFastaFile_g_5;g_2_germlineFastaFile_g_25;g_2_germlineFastaFile_g_37;g_2_germlineFastaFile_g_8}
+Channel.fromPath(params.j_germline, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_3_germlineFastaFile_g_6;g_3_germlineFastaFile_g_25;g_3_germlineFastaFile_g_8}
 
 
 process V_MakeBlastDb {
@@ -141,7 +141,7 @@ input:
  file db_j from g_6_germlineDb0_g_7
 
 output:
- set val(name), file("${outfile}") optional true  into g_7_igblastOut0_g_10, g_7_igblastOut0_g_8
+ set val(name), file("${outfile}") optional true  into g_7_igblastOut0_g_8
 
 script:
 num_threads = params.IgBlastn.num_threads
@@ -253,49 +253,18 @@ if(igblastOut.getName().endsWith(".out")){
 }
 
 
-process igdiscover_igblast {
-
-input:
- set val(name_igblast),file(igblastOut) from g_7_igblastOut0_g_10
- set val(name1), file(v_germline_file) from g_1_germlineFastaFile_g_10
- set val(name1), file(d_germline_file) from g_2_germlineFastaFile_g_10
- set val(name1), file(j_germline_file) from g_3_germlineFastaFile_g_10
- set val(name),file(fastaFile) from g_0_fastaFile_g_10
-
-output:
- set val(name_igblast),file("*_igdiscover-pass.tsv") optional true  into g_10_outputFileTSV0_g_11
-
-script:
-
-"""
-
-mkdir database
-
-# move the germline files to the database folder
-awk '/^>/ {print; next} {gsub(/[.-]/, ""); print}' ${v_germline_file} > database/V.fasta
-cp ${j_germline_file} database/J.fasta
-cp ${d_germline_file} database/D.fasta
-
-igdiscover igblast --threads 1 --no-cache --pathig ${igblastOut} database ${fastaFile} > ${name_igblast}_igdiscover-pass.tsv
-
-"""
-}
-
-
 process tcr_data_to_igdiscover {
 
 publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_makedb-pass_mut.tsv$/) "reads/$filename"}
-publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_igdiscover-pass_mut.tsv$/) "reads/$filename"}
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_makedb-pass_mut.tsv$/) "reads/$filename"}
 publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_collapsed.fasta$/) "reads/$filename"}
 input:
  set val(name),file(makedb) from g_8_outputFileTSV0_g_11
  set val(name1), file(v_germline_file) from g_1_germlineFastaFile_g_11
- set val(name2),file(igdiscover) from g_10_outputFileTSV0_g_11
 
 output:
  set val(name),file("*_makedb-pass_mut.tsv") optional true  into g_11_outputFileTSV0_g_25
- set val(name),file("*_igdiscover-pass_mut.tsv") optional true  into g_11_outputFileTSV11
- set val(name),file("*_collapsed.fasta") optional true  into g_11_germlineFastaFile2_g_29, g_11_germlineFastaFile2_g_30
+ set val(name),file("*_collapsed.fasta") optional true  into g_11_germlineFastaFile1_g_29, g_11_germlineFastaFile1_g_30
 
 script:
 """
@@ -321,37 +290,10 @@ data[["v_mut"]] <- sapply(1:nrow(data), function(i){
   # sum the number of mutation and check if below or equal to 3.
   sum(idx>v_min & idx<=316)<=3;
 })
-# filter the data
-data_filter <- data[data[["v_mut"]],]
-
-# read igdiscover data
-data_igdiscover <- read.delim("${igdiscover}", header=T, sep = "\t", stringsAsFactors = F)
-# sort the names
-data_igdiscover[["sequence_id"]] <- sapply(data_igdiscover[["name"]], function(x) strsplit(x,"|",fixed=T)[[1]][1])
-data_igdiscover <- data_igdiscover[data_igdiscover[["sequence_id"]] %in% data[["sequence_id"]],]
-
-# add cdr3 information
-ig_ind <- 1
-for (seq_id in data_igdiscover[["sequence_id"]]) {
-  seq_ind <- which(data[["sequence_id"]]==seq_id)
-  cdr3 <- data[["junction"]][[seq_ind]]
-  if (str_length(cdr3) > 6) {
-    cdr3 <- substr(cdr3, 4, str_length(cdr3)-3)
-    cdr3_aa <- data[["junction_aa"]][[seq_ind]]
-    cdr3_aa <- substr(cdr3_aa, 2, str_length(cdr3_aa)-1)
-  } else {
-    cdr3 <- ""
-    cdr3_aa <- ""
-  }
-  data_igdiscover[["CDR3_nt"]][ig_ind] <- cdr3
-  data_igdiscover[["CDR3_aa"]][ig_ind] <- cdr3_aa
-  ig_ind <- ig_ind + 1
-}
 
 ## write both tables
 
 write.table(data, paste0("${name}", "_makedb-pass_mut.tsv"), sep = "\t")
-write.table(data_igdiscover, paste0("${name}", "_igdiscover-pass_mut.tsv"), sep = "\t")
 
 # collapse identical sequences
 library(dplyr)
@@ -750,7 +692,7 @@ if(germlineFile.getName().endsWith("fasta")){
 process IgBlastn_genotype {
 
 input:
- set val(name),file(fastaFile) from g_11_germlineFastaFile2_g_29
+ set val(name),file(fastaFile) from g_11_germlineFastaFile1_g_29
  file db_v from g_26_germlineDb0_g_29
  file db_d from g_27_germlineDb0_g_29
  file db_j from g_28_germlineDb0_g_29
@@ -803,7 +745,7 @@ process MakeDb_genotype {
 
 publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_db-pass.tsv$/) "rearrangements/$filename"}
 input:
- set val(name),file(fastaFile) from g_11_germlineFastaFile2_g_30
+ set val(name),file(fastaFile) from g_11_germlineFastaFile1_g_30
  set val(name_igblast),file(igblastOut) from g_29_igblastOut0_g_30
  set val(name1), file(v_germline_file) from g_25_germlineFastaFile1_g_30
  set val(name2), file(d_germline_file) from g_25_germlineFastaFile2_g_30
