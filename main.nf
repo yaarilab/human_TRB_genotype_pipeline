@@ -253,7 +253,7 @@ if(igblastOut.getName().endsWith(".out")){
 }
 
 
-process tcr_data_to_igdiscover {
+process tcr_data_for_genotype {
 
 publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_makedb-pass_mut.tsv$/) "reads/$filename"}
 publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_makedb-pass_mut.tsv$/) "reads/$filename"}
