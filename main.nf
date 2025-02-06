@@ -222,7 +222,6 @@ partial = (partial=="true") ? "--partial" : ""
 reference_set = "reference_set_makedb_"+name_alignment+".fasta"
 
 outname = name_igblast+'_'+name_alignment
-println name_alignment
 
 if(igblastOut.getName().endsWith(".out")){
 	"""
@@ -780,7 +779,6 @@ partial = (partial=="true") ? "--partial" : ""
 reference_set = "reference_set_makedb_"+name_alignment+".fasta"
 
 outname = name_igblast+'_'+name_alignment
-println name_alignment
 
 if(igblastOut.getName().endsWith(".out")){
 	"""
