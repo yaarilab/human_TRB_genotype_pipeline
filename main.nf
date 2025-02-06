@@ -52,8 +52,8 @@ if (!params.d_germline){params.d_germline = ""}
 if (!params.j_germline){params.j_germline = ""} 
 
 Channel.fromPath(params.airr_seq, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_0_fastaFile_g_7;g_0_fastaFile_g_8}
-Channel.fromPath(params.v_germline_file, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_1_germlineFastaFile_g_4;g_1_germlineFastaFile_g_8;g_1_germlineFastaFile_g_25;g_1_germlineFastaFile_g_11;g_1_germlineFastaFile_g_34}
-Channel.fromPath(params.d_germline, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_2_germlineFastaFile_g_5;g_2_germlineFastaFile_g_25;g_2_germlineFastaFile_g_37;g_2_germlineFastaFile_g_8}
+Channel.fromPath(params.v_germline_file, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_1_germlineFastaFile_g_4;g_1_germlineFastaFile_g_8;g_1_germlineFastaFile_g_25;g_1_germlineFastaFile_g_11}
+Channel.fromPath(params.d_germline, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_2_germlineFastaFile_g_5;g_2_germlineFastaFile_g_25;g_2_germlineFastaFile_g_8}
 Channel.fromPath(params.j_germline, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_3_germlineFastaFile_g_6;g_3_germlineFastaFile_g_25;g_3_germlineFastaFile_g_8}
 
 
@@ -355,6 +355,8 @@ tigger::writeFasta(setNames(as.list(data[["sequence"]]), seq.names), file = past
 process trb_genotype_inference {
 
 publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*v_genotype.tsv$/) "genotype/$filename"}
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*d_genotype.tsv$/) "genotype/$filename"}
+publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*j_genotype.tsv$/) "genotype/$filename"}
 input:
  set val(name), file(airrseq) from g_11_outputFileTSV0_g_25
  set val(namev), file(germline_v) from g_1_germlineFastaFile_g_25
@@ -362,12 +364,12 @@ input:
  set val(namej), file(germline_j) from g_3_germlineFastaFile_g_25
 
 output:
- set val(name),file("*v_genotype.tsv")  into g_25_outputFileTSV0_g_34
+ set val(name),file("*v_genotype.tsv")  into g_25_outputFileTSV00
  set val(namev),file("V_gapped_personal.fasta")  into g_25_germlineFastaFile1_g_26, g_25_germlineFastaFile1_g_40, g_25_germlineFastaFile1_g_30
  set val(named),file("D_personal.fasta")  into g_25_germlineFastaFile2_g_27, g_25_germlineFastaFile2_g_30
  set val(namej),file("J_personal.fasta")  into g_25_germlineFastaFile3_g_28, g_25_germlineFastaFile3_g_30
- set val(name),file("*d_genotype.tsv")  into g_25_outputFileTSV4_g_35
- set val(name),file("*j_genotype.tsv")  into g_25_outputFileTSV5_g_35
+ set val(name),file("*d_genotype.tsv")  into g_25_outputFileTSV44
+ set val(name),file("*j_genotype.tsv")  into g_25_outputFileTSV55
 
 script:
 
@@ -751,7 +753,7 @@ input:
  set val(name3), file(j_germline_file) from g_25_germlineFastaFile3_g_30
 
 output:
- set val(name_igblast),file("*_db-pass.tsv") optional true  into g_30_outputFileTSV0_g_34, g_30_outputFileTSV0_g_35, g_30_outputFileTSV0_g_37, g_30_outputFileTSV0_g_40
+ set val(name_igblast),file("*_db-pass.tsv") optional true  into g_30_outputFileTSV0_g_40
  set val("reference_set"), file("${reference_set}") optional true  into g_30_germlineFastaFile1_g_40
  set val(name_igblast),file("*_db-fail.tsv") optional true  into g_30_outputFileTSV22
 
@@ -863,305 +865,6 @@ run_ogrdbstats \
 
 """
 
-}
-
-
-process trb_deletion {
-
-input:
- set val(name),file(airrseq) from g_30_outputFileTSV0_g_34
- set val(name1), file(genotype_v) from g_25_outputFileTSV0_g_34
- set val(name2), file(germline_v) from g_1_germlineFastaFile_g_34
-
-output:
- set val(name), file("*_v_genotype_deletion.tsv")  into g_34_outputFileTSV0_g_35
-
-script:
-	
-gene_usages_file = params.trb_deletion.gene_usages_file
-min_consensus_count = params.trb_deletion.min_consensus_count
-
-"""
-#!/usr/bin/env Rscript
-
-library(tigger)
-library(dplyr)
-library(stringi)
-
-gene_usages <- read.delim("${gene_usages_file}", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-
-TRBV_GERM <- readIgFasta("${germline_v}")
-
-geno_BV <- read.delim("${genotype_v}", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-
-DATA <- read.delim("${airrseq}", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-
-DATA <- DATA[DATA[["consensus_count"]] >= ${min_consensus_count}, ]
-
-cutoff <- 0.0005
-p_val_cutoff <- 0.001
-
-DATA[["v_gene"]] <- unlist(lapply(DATA[["v_call"]], function(Vcall){
-  assignments <- unlist(strsplit(Vcall, ",", fixed = TRUE))
-  v_genes <- unique(sapply(strsplit(assignments, "*", fixed = TRUE), "[", 1))
-  v_genes <- v_genes[order(v_genes)]
-  paste(v_genes, collapse = ",")
-}))
-
-DATA <- DATA[!grepl(",", DATA[["v_gene"]]), ]
-DATA <- DATA[grepl("TRBV", DATA[["v_gene"]]), ]
-
-gene_usages[["N"]] <- unlist(lapply(gene_usages[["GENE"]], function(gene){nrow(DATA[DATA[["v_gene"]] == gene, ])}))
-gene_usages[["TOTAL"]] <- nrow(DATA)
-gene_usages[["USAGE"]] <- gene_usages[["N"]] / gene_usages[["TOTAL"]]
-
-gene_usages <- gene_usages[gene_usages[["MIN_FREQ"]] != Inf & gene_usages[["AVG_USAGE"]] > 1.5 * cutoff, ]
-
-# calculate the p value for each gene in case that the gene is deleted by binom test
-gene_usages[["PVAL"]] <- sapply(1:nrow(gene_usages), function(i) {
-  if (gene_usages[["USAGE"]][i] < cutoff) {
-    return(binom.test(x = gene_usages[["N"]][i], n = gene_usages[["TOTAL"]][i], p = gene_usages[["MIN_FREQ"]][i])\$p.value)
-  } else {
-    return(1)
-  }
-})
-
-# Detect according to the p values if there are deleted genes
-gene_usages[["DELETED"]] <- sapply(1:nrow(gene_usages), function(i) {
-  if (gene_usages[["PVAL"]][i] <= p_val_cutoff) {
-    if ((gene_usages[["USAGE"]][i] < cutoff) & gene_usages[["MIN_FREQ"]][i] != Inf) {
-      return(TRUE)
-    }
-  }
-  return(FALSE)
-})
-
-gene_usages <- gene_usages[gene_usages[["DELETED"]], ]
-
-if (nrow(gene_usages) > 0) {
-  deleted_genes <- gene_usages[["GENE"]]
-  geno_BV <- geno_BV[!geno_BV[["gene"]] %in% deleted_genes, ]
-  
-  for (gene in deleted_genes) {
-    geno_BV[nrow(geno_BV) + 1, ] <- c(gene, NA, NA, NA, NA, NA, NA, NA, NA, 1000, "Deletion")
-  }
-}
-
-write.table(geno_BV, file = paste0("${name}","_v_genotype_deletion.tsv"), quote = F, row.names = F, sep = "\t")
-
-"""
-
-}
-
-
-process trb_genotype_report {
-
-publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /${outname}_genotype.tsv$/) "genotype_report/$filename"}
-input:
- set val(name), file(airrseq) from g_30_outputFileTSV0_g_35
- set val(namev), file(genotype_v) from g_34_outputFileTSV0_g_35
- set val(named), file(genotype_d) from g_25_outputFileTSV4_g_35
- set val(namej), file(genotype_j) from g_25_outputFileTSV5_g_35
-
-output:
- set val(name), file("${outname}_genotype.tsv")  into g_35_outputFileTSV0_g_37
-
-script:
-	
-outname = airrseq.name.substring(0, airrseq.name.indexOf("_db-pass"))
-
-"""
-#!/usr/bin/env Rscript
-
-library(tigger)
-library(dplyr)
-library(stringi)
-
-DATA <- read.delim("${airrseq}", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-geno_BV <- read.delim("${genotype_v}", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-geno_BD <- read.delim("${genotype_d}", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-geno_BJ <- read.delim("${genotype_j}", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-
-
-
-v_table <- DATA[!grepl(",", DATA[["v_call"]]), ]
-v_table <- v_table %>% dplyr::group_by(v_call) %>% dplyr::summarise(N = n())
-v_table[["gene"]] <- sapply(strsplit(v_table[["v_call"]], "*", fixed = TRUE), "[", 1)
-v_table[["allele"]] <- sapply(strsplit(v_table[["v_call"]], "*", fixed = TRUE), "[", 2)
-geno_BV[["Freq_by_Seq"]] <- unlist(lapply(geno_BV[["gene"]], function(g) {
-  if (!g %in% v_table[["gene"]]) {
-    return("0")
-  }
-  counts <- v_table[["N"]][v_table[["gene"]] == g]
-  counts <- sort(counts, decreasing = TRUE)
-  return(paste(counts, collapse = ";"))
-}))
-
-d_table <- DATA[(!grepl(pattern = ',', DATA[["d_call"]]) & DATA[["d_call"]] != 'None') & (DATA[["d_sequence_end"]] - DATA[["d_sequence_start"]] >= 8), ]
-d_table <- d_table[complete.cases(d_table[["sequence_id"]]), ]
-d_table <- d_table %>% dplyr::group_by(d_call) %>% dplyr::summarise(N = n())
-d_table[["gene"]] <- sapply(strsplit(d_table[["d_call"]], "*", fixed = TRUE), "[", 1)
-d_table[["allele"]] <- sapply(strsplit(d_table[["d_call"]], "*", fixed = TRUE), "[", 2)
-geno_BD[["Freq_by_Seq"]] <- unlist(lapply(geno_BD[["gene"]], function(g) {
-  if (!g %in% d_table[["gene"]]) {
-    return("0")
-  }
-  counts <- d_table[["N"]][d_table[["gene"]] == g]
-  counts <- sort(counts, decreasing = TRUE)
-  return(paste(counts, collapse = ";"))
-}))
-
-j_table <- DATA[!grepl(",", DATA[["j_call"]]), ]
-j_table <- j_table %>% dplyr::group_by(j_call) %>% dplyr::summarise(N = n())
-j_table[["gene"]] <- sapply(strsplit(j_table[["j_call"]], "*", fixed = TRUE), "[", 1)
-j_table[["allele"]] <- sapply(strsplit(j_table[["j_call"]], "*", fixed = TRUE), "[", 2)
-geno_BJ[["Freq_by_Seq"]] <- unlist(lapply(geno_BJ[["gene"]], function(g) {
-  if (!g %in% j_table[["gene"]]) {
-    return("0")
-  }
-  counts <- j_table[["N"]][j_table[["gene"]] == g]
-  counts <- sort(counts, decreasing = TRUE)
-  return(paste(counts, collapse = ";"))
-}))
-
-geno <- rbind(geno_BV, geno_BD, geno_BJ)
-geno[["Freq_by_Clone"]] <- geno[["Freq_by_Seq"]]
-write.table(geno, file = paste0("${outname}","_genotype.tsv"), quote = FALSE, row.names = F, sep = "\t")
-"""
-}
-
-
-process trb_haplotype {
-
-publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_haplo_D2.tsv$/) "haplotype/$filename"}
-publishDir params.outdir, mode: 'copy', saveAs: {filename -> if (filename =~ /.*_haplo_J1_6.tsv$/) "haplotype/$filename"}
-input:
- set val(name),file(airrseq) from g_30_outputFileTSV0_g_37
- set val(name1),file(genos) from g_35_outputFileTSV0_g_37
- set val(name2),file(germline_d) from g_2_germlineFastaFile_g_37
-
-output:
- set val(name),file("*_haplo_D2.tsv") optional true  into g_37_outputFileTSV00
- set val(name),file("*_haplo_J1_6.tsv") optional true  into g_37_outputFileTSV11
-
-script:
-	
-"""
-#!/usr/bin/env Rscript
-
-library(tigger)
-library(dplyr)
-library(stringi)
-library(rabhit)
-
-TRBV_GERM <- readIgFasta("${germline_v}")
-TRBD_GERM <- readIgFasta("${germline_d}")
-geno <- read.delim("${genos}", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-DATA <- read.delim("${airrseq}", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-DATA[["subject"]] <- "${name}"
-
-hetero_j16 <- "TRBJ1-6" %in% geno[["gene"]]
-if (hetero_j16) {
-  hetero_j16 <- grepl(",", geno[["genotyped_alleles"]][geno[["gene"]] == "TRBJ1-6"])
-}
-
-hetero_d2 <- "TRBD2" %in% geno[["gene"]]
-if (hetero_d2) {
-  hetero_d2 <- grepl(",", geno[["genotyped_alleles"]][geno[["gene"]] == "TRBD2"])
-}
-
-# Filtering
-DATA <- DATA[!grepl(",", DATA[["v_call"]]), ] # V single assignment
-
-# zero mutations over the V
-v_seqs <- sapply(1:nrow(DATA), function(x) substr(DATA[["sequence_alignment"]][x], 1, DATA[["v_germline_end"]][x]))
-DATA[["v_mut"]] <- unlist(tigger::getMutCount(v_seqs, DATA[["v_call"]], germline_db = TRBV_GERM))
-DATA <- DATA[DATA[["v_mut"]] <= 1, ]
-
-del_genes <- geno[["gene"]][grepl("Del", geno[["genotyped_alleles"]])]
-
-if (hetero_j16) {
-  # Only rearrangements with single assignment of TRBJ1-6
-  DATA_J <- DATA[grepl("J1-6", DATA[["j_call"]]), ]
-  DATA_J <- DATA_J[!grepl(",", DATA_J[["j_call"]]), ]
-  DATA_J[["J_SEQ_LENGTH"]] <- DATA_J[["j_sequence_end"]] - DATA_J[["j_sequence_start"]] + 1
-  DATA_J <- DATA_J[DATA_J[["J_SEQ_LENGTH"]] > 10, ]
-  
-  TRBJ1_6_01_REA <- nrow(DATA_J[DATA_J[["j_call"]] == "TRBJ1-6*01", ])
-  total <- nrow(DATA_J)
-  
-  if ((TRBJ1_6_01_REA / total > 0.3) & (TRBJ1_6_01_REA / total < 0.7)) {
-    haplo_j1_6 <- createFullHaplotype(DATA_J, toHap_col = "v_call", hapBy_col = "j_call", chain = "TRB", hapBy = "TRBJ1-6", toHap_GERM = TRBV_GERM, rmPseudo = FALSE)
-    haplo_j1_6[["TOTAL"]] <- total
-    
-    if (length(del_genes) > 0) {
-      for (gene in del_genes) {
-        haplo_j1_6[haplo_j1_6[["gene"]] == gene, c(3:5, 9)] <- c("Del", "Del", "Del", 1000)
-      }
-    }
-    
-    write.table(haplo_j1_6, file = paste0("${name}","_haplo_J1_6.tsv"), quote = FALSE, row.names = FALSE, sep = "\t")
-  }
-}
-
-if (hetero_d2) {
-  # Only rearrangements with single assignment of TRBD2
-  DATA[["d_germline_length"]] <- as.integer(DATA[["d_germline_end"]]) - as.integer(DATA[["d_germline_start"]]) + 1
-  DATA_D_geno <- DATA[(!grepl(pattern = ',', DATA[["d_call"]]) & DATA[["d_call"]] != 'None') & (DATA[["d_germline_length"]] >= 9), ]
-  DATA_D_geno <- DATA_D_geno[complete.cases(DATA_D_geno[["sequence_id"]]), ]
-  DATA_D_geno <- DATA_D_geno[grepl("D2", DATA_D_geno[["d_call"]]), ]
-  
-  # filter by zero mutations over the D segment
-  # extract d sequence in the direct orientation
-  DATA_D_reg <- DATA_D_geno[DATA_D_geno[["d_germline_start"]] < DATA_D_geno[["d_germline_end"]], ]
-  DATA_D_reg[["d_seq"]] <- substr(DATA_D_reg[["sequence"]], DATA_D_reg[["d_sequence_start"]], DATA_D_reg[["d_sequence_end"]])
-  
-  # extract convert d sequence in the inverted orientation to the direct orientation
-  DATA_D_inv <- DATA_D_geno[DATA_D_geno[["d_germline_start"]] > DATA_D_geno[["d_germline_end"]], ]
-  DATA_D_inv[["d_seq"]] <- substr(DATA_D_inv[["sequence"]], DATA_D_inv[["d_sequence_start"]], DATA_D_inv[["d_sequence_end"]])
-  DATA_D_inv[["d_seq"]] <- stringi::stri_reverse(DATA_D_inv[["d_seq"]])
-  DATA_D_inv[["d_seq"]] <- gsub("A", "t", DATA_D_inv[["d_seq"]])
-  DATA_D_inv[["d_seq"]] <- gsub("T", "a", DATA_D_inv[["d_seq"]])
-  DATA_D_inv[["d_seq"]] <- gsub("G", "c", DATA_D_inv[["d_seq"]])
-  DATA_D_inv[["d_seq"]] <- gsub("C", "g", DATA_D_inv[["d_seq"]])
-  DATA_D_inv[["d_seq"]] <- toupper(DATA_D_inv[["d_seq"]])
-  
-  d_germ_end <- DATA_D_inv[["d_germline_start"]]
-  DATA_D_inv[["d_germline_start"]] <- DATA_D_inv[["d_germline_end"]]
-  DATA_D_inv[["d_germline_end"]] <- d_germ_end
-  
-  DATA_D_geno <- rbind(DATA_D_reg, DATA_D_inv)
-  
-  DATA_D_geno[["mut_d"]] <- unlist(lapply(1:nrow(DATA_D_geno), function(i) {
-    mut <- 0
-    row_seq <- unlist(strsplit(DATA_D_geno[["d_seq"]][[i]], ""))
-    allele_seq <- unlist(strsplit(TRBD_GERM[[DATA_D_geno[["d_call"]][[i]]]], ""))
-    for (pos in DATA_D_geno[["d_germline_start"]][[i]]:(DATA_D_geno[["d_germline_end"]][[i]])) {
-      if (row_seq[pos - (DATA_D_geno[["d_germline_start"]][[i]] - 1)] != allele_seq[pos]) {
-        mut <- mut + 1
-      }
-    }
-    mut
-  }))
-  
-  DATA_D_geno <- DATA_D_geno[DATA_D_geno[["mut_d"]] == 0, ]
-  TRBD2_01_REA <- nrow(DATA_D_geno[DATA_D_geno[["d_call"]] == "TRBD2*01", ])
-  total <- nrow(DATA_D_geno)
-  
-  if ((TRBD2_01_REA / total > 0.3) & (TRBD2_01_REA / total < 0.7)) {
-    haplo_d2 <- createFullHaplotype(DATA_D_geno, toHap_col = "v_call", hapBy_col = "d_call", chain = "TRB", hapBy = "TRBD2", toHap_GERM = TRBV_GERM, rmPseudo = FALSE, kThreshDel = 5)
-    haplo_d2[["TOTAL"]] <- total
-    
-    if (length(del_genes) > 0) {
-      for (gene in del_genes) {
-        haplo_d2[haplo_d2[["gene"]] == gene, c(3:5, 9)] <- c("Del", "Del", "Del", 1000)
-      }
-    }
-    
-    write.table(haplo_d2, file =  paste0("${name}","_haplo_D2.tsv"), quote = FALSE, row.names = FALSE, sep = "\t")
-  }
-}
-"""
 }
 
 
