@@ -52,7 +52,7 @@ if (!params.d_germline){params.d_germline = ""}
 if (!params.j_germline){params.j_germline = ""} 
 
 Channel.fromPath(params.airr_seq, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_0_fastaFile_g_7;g_0_fastaFile_g_8}
-Channel.fromPath(params.v_germline_file, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_1_germlineFastaFile_g_4;g_1_germlineFastaFile_g_8;g_1_germlineFastaFile_g_25;g_1_germlineFastaFile_g_11}
+Channel.fromPath(params.v_germline_file, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_1_germlineFastaFile_g_4;g_1_germlineFastaFile_g_8;g_1_germlineFastaFile_g_25;g_1_germlineFastaFile_g_11;g_1_germlineFastaFile_g_34}
 Channel.fromPath(params.d_germline, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_2_germlineFastaFile_g_5;g_2_germlineFastaFile_g_25;g_2_germlineFastaFile_g_37;g_2_germlineFastaFile_g_8}
 Channel.fromPath(params.j_germline, type: 'any').map{ file -> tuple(file.baseName, file) }.into{g_3_germlineFastaFile_g_6;g_3_germlineFastaFile_g_25;g_3_germlineFastaFile_g_8}
 
@@ -871,6 +871,7 @@ process trb_deletion {
 input:
  set val(name),file(airrseq) from g_30_outputFileTSV0_g_34
  set val(name1), file(genotype_v) from g_25_outputFileTSV0_g_34
+ set val(name2), file(germline_v) from g_1_germlineFastaFile_g_34
 
 output:
  set val(name), file("*_v_genotype_deletion.tsv")  into g_34_outputFileTSV0_g_35
